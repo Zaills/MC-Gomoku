@@ -11,7 +11,7 @@ import java.nio.charset.StandardCharsets;
 import static zaills.gomoku.Gomoku.LOGGER;
 
 public class APIHandler {
-	private static final String baseUrl = "http://127.0.0.1:8080";
+	private static final String baseUrl = "http://172.22.248.30:8080";
 	private static final Gson GSON = new Gson();
 	private static int[][] boardState;
 
@@ -43,7 +43,7 @@ public class APIHandler {
 		return null;
 	}
 
-	public static void sendMove(int x, int y, int player) {
+	public static boolean sendMove(int x, int y, int player) {
 		try {
 			java.net.URL url = URI.create(baseUrl + "/move").toURL();
 			java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
@@ -56,7 +56,7 @@ public class APIHandler {
 			JsonObject moveJson = new JsonObject();
 			moveJson.addProperty("x", x);
 			moveJson.addProperty("y", y);
-			moveJson.addProperty("player", player);
+			moveJson.addProperty("color", player);
 
 			try (java.io.OutputStream os = conn.getOutputStream()) {
 				byte[] input = moveJson.toString().getBytes(StandardCharsets.UTF_8);
@@ -66,11 +66,41 @@ public class APIHandler {
 			int responseCode = conn.getResponseCode();
 			if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
 				LOGGER.info("Move sent successfully");
+				return true;
 			} else {
 				LOGGER.error("Failed to send move, response code: " + responseCode);
+				return false;
 			}
 		} catch (IOException e) {
 			LOGGER.error("Error while trying to send move to API: " + e.getMessage());
+			return false;
 		}
+	}
+
+	public static int[] getAISuggest() {
+		try {
+			java.net.URL url = URI.create(baseUrl + "/ai-suggest").toURL();
+			java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+			conn.setRequestMethod("GET");
+			conn.setConnectTimeout(3000);
+			conn.setReadTimeout(3000);
+			int responseCode = conn.getResponseCode();
+			if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+				java.io.BufferedReader in = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+				String inputLine;
+				StringBuilder content = new StringBuilder();
+				while ((inputLine = in.readLine()) != null) {
+					content.append(inputLine);
+				}
+				in.close();
+				JsonObject suggestionJson = JsonParser.parseString(content.toString()).getAsJsonObject();
+				int x = suggestionJson.get("x").getAsInt();
+				int y = suggestionJson.get("y").getAsInt();
+				return new int[]{x, y};
+			}
+		} catch (IOException e) {
+			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+		}
+		return new int[]{-1, -1};
 	}
 }

@@ -2,6 +2,7 @@ package zaills.gomoku;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
@@ -13,6 +14,7 @@ public class GobanScreen extends Screen {
 	final static Identifier BLACK_STONE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/blackstone.png");
 	final static Identifier WHITE_STONE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/white_wool.png");
 	final static Identifier EMPTY_CELL_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/oak_planks.png");
+	final static Identifier SUGGEST_CELL_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/gold_block.png");
 	final static int[] positionTextureX = new int[]{
 			0, 2, 3, 2, 2, 3, 2, 2, 3, 2, 3, 2, 2, 3, 2, 2, 3, 2, 2
 	};
@@ -23,6 +25,11 @@ public class GobanScreen extends Screen {
 
 	private float xMouse;
 	private float yMouse;
+	private boolean PlayerTurn = true;
+	private long lastPullTime = 0L;
+
+	private int x_suggest = -1;
+	private int y_suggest = -1;
 
 	protected GobanScreen(Component component) {
 		super(component);
@@ -30,6 +37,8 @@ public class GobanScreen extends Screen {
 
 	@Override
 	protected void init() {
+		lastPullTime = System.currentTimeMillis();
+		boardState = APIHandler.getBoardState();
 	}
 
 	@Override
@@ -49,8 +58,9 @@ public class GobanScreen extends Screen {
 	}
 
 	private void renderBoard(GuiGraphics guiGraphics, int startX, int startY) {
-		// Render the Goban board here
-		boardState = APIHandler.getBoardState();
+		if (!this.PlayerTurn && boardState != null) {
+			waitForBoardUpdate();
+		}
 		if (boardState == null) {
 			guiGraphics.drawString(this.font, Component.literal("Failed to load board state."), 50, 80, 0xFF0000, true);
 			return;
@@ -62,12 +72,14 @@ public class GobanScreen extends Screen {
 			for (int col = 0; col < boardState[row].length; col++) {
 				int x = startX + col * cellSize + spacingX(col);
 				int y = startY + row * cellSize + spacingY(row);
-				if (boardState[row][col] == 1) {
+				if (col == x_suggest && row == y_suggest) {
+					guiGraphics.blit(RenderPipelines.GUI_TEXTURED, SUGGEST_CELL_TEXTURE, x, y, 0, 0, 10, 10, 16, 16); // Suggestion highlight
+				} else if (boardState[row][col] == 1) {
 					guiGraphics.blit(RenderPipelines.GUI_TEXTURED, BLACK_STONE_TEXTURE, x, y, 0, 0, 10, 10, 16, 16); // Black stone
 				} else if (boardState[row][col] == 2) {
 					guiGraphics.blit(RenderPipelines.GUI_TEXTURED, WHITE_STONE_TEXTURE, x, y, 0,0, 10, 10, 16, 16); // White stone
 				} else {
-					guiGraphics.blit(RenderPipelines.GUI_TEXTURED, EMPTY_CELL_TEXTURE, x, y, 0,0, 10, 10, 16, 16);
+//					guiGraphics.blit(RenderPipelines.GUI_TEXTURED, EMPTY_CELL_TEXTURE, x, y, 0,0, 10, 10, 16, 16);
 				}
 			}
 		}
@@ -104,11 +116,43 @@ public class GobanScreen extends Screen {
 				if (this.xMouse >= x && this.xMouse <= x + cellSize &&
 						this.yMouse >= y && this.yMouse <= y + cellSize) {
 					Gomoku.LOGGER.info("Clicked on cell: ({}, {})", row, col);
-					APIHandler.sendMove(col, row, 1);
+					if (APIHandler.sendMove(col, row, 1)) {
+						this.PlayerTurn = false;
+						x_suggest = -1;
+						y_suggest = -1;
+					}
 					return true;
 				}
 			}
 		}
 		return super.mouseReleased(mouseButtonEvent);
+	}
+
+	@Override
+	public boolean keyReleased(KeyEvent keyEvent) {
+		if (keyEvent.key() == 72) {
+			int[] suggest = APIHandler.getAISuggest();
+			if (suggest[0] != -1 && suggest[1] != -1) {
+				x_suggest = suggest[0];
+				y_suggest = suggest[1];
+				Gomoku.LOGGER.info("AI Suggestion: ({}, {})", x_suggest, y_suggest);
+			}
+		}
+		return super.keyReleased(keyEvent);
+	}
+
+	private void waitForBoardUpdate() {
+		long now = System.currentTimeMillis();
+		if (now - lastPullTime < 1000) {
+			return;
+		}
+
+		lastPullTime = now;
+
+		int [][] board = APIHandler.getBoardState();
+		if (board != null && board != boardState) {
+			boardState = board;
+			this.PlayerTurn = true;
+		}
 	}
 }

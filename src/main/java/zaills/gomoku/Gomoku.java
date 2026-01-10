@@ -35,7 +35,7 @@ public class Gomoku implements ModInitializer {
 	public static void testAPI() {
 		// call the API from 127.0.0.1:8080/ping
 		try {
-			java.net.URL url = URI.create("http://127.0.0.1:8080/board").toURL();
+			java.net.URL url = URI.create("http://172.22.248.30:8080/board").toURL();
 			java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
 			conn.setRequestMethod("GET");
 			conn.setConnectTimeout(3000);

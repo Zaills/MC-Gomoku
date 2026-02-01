@@ -1,14 +1,19 @@
 package zaills.gomoku;
 
 import com.mojang.brigadier.Command;
+import me.shedaniel.autoconfig.AutoConfig;
+import me.shedaniel.autoconfig.serializer.GsonConfigSerializer;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import zaills.gomoku.config.GomokuConfig;
 
 public class GomokuClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
+		AutoConfig.register(GomokuConfig.class, GsonConfigSerializer::new);
+
 		Command<net.minecraft.commands.CommandSourceStack> openScreen = context -> {
 			net.minecraft.server.MinecraftServer server = context.getSource().getServer();
 			server.execute(() -> {

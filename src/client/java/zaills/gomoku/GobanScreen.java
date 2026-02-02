@@ -25,8 +25,6 @@ public class GobanScreen extends Screen {
 
 	private float xMouse;
 	private float yMouse;
-	private boolean PlayerTurn = true;
-	private long lastPullTime = 0L;
 
 	private int x_suggest = -1;
 	private int y_suggest = -1;
@@ -37,7 +35,6 @@ public class GobanScreen extends Screen {
 
 	@Override
 	protected void init() {
-		lastPullTime = System.currentTimeMillis();
 		APIHandler.create_room(true, false);
 		boardState = APIHandler.getBoardState();
 	}
@@ -64,7 +61,7 @@ public class GobanScreen extends Screen {
 	}
 
 	private void renderBoard(GuiGraphics guiGraphics, int startX, int startY) {
-		//waitForBoardUpdate();
+		waitForBoardUpdate();
 		if (boardState == null) {
 			guiGraphics.drawString(this.font, Component.literal("Failed to load board state."), 50, 80, 0xFF0000, true);
 			return;
@@ -121,7 +118,6 @@ public class GobanScreen extends Screen {
 						this.yMouse >= y && this.yMouse <= y + cellSize) {
 					GomokuClient.LOGGER.info("Clicked on cell: ({}, {})", row, col);
 					if (APIHandler.sendMove(col, row, 1)) {
-						this.PlayerTurn = false;
 						x_suggest = -1;
 						y_suggest = -1;
 					}
@@ -146,20 +142,11 @@ public class GobanScreen extends Screen {
 	}
 
 	private void waitForBoardUpdate() {
-		long now = System.currentTimeMillis();
-		if (now - lastPullTime < 1000) {
-			return;
-		}
-
-		lastPullTime = now;
-
 		int [][] board = APIHandler.getBoardState();
-		if (board != null && board != boardState) {
-			boardState = board;
-			this.PlayerTurn = true;
-		} else {
-			GomokuClient.LOGGER.error("cannot get the board");
+		if (board == null) {
+			this.minecraft.gui.getChat().addMessage(Component.literal("Could not connect to the server"));
 			this.minecraft.setScreen(null);
 		}
+		boardState = board;
 	}
 }

@@ -109,6 +109,11 @@ public class APIHandler {
 			}
 			int responseCode = conn.getResponseCode();
 			if (responseCode == HttpURLConnection.HTTP_OK) {
+				String response = readResponse(conn);
+				System.out.println(response);
+				JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
+				token = responseJson.get("token").getAsString();
+
 				LOGGER.info("Joined room successfully");
 				return getBoardState();
 			} else {
@@ -136,6 +141,7 @@ public class APIHandler {
 			}
 		} catch (IOException e) {
 			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+			return null;
 		}
 		if (boardState != null) {
 			return boardState;
@@ -221,8 +227,6 @@ public class APIHandler {
 			}
 			int responseCode = conn.getResponseCode();
 			if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
-				String response = readResponse(conn);
-				System.out.println();
 				LOGGER.info("Give up sent successfully");
 				return true;
 			} else {

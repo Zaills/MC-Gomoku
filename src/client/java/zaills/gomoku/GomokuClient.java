@@ -24,10 +24,6 @@ public class GomokuClient implements ClientModInitializer {
 		AutoConfig.register(GomokuConfig.class, GsonConfigSerializer::new);
 
 		Command<FabricClientCommandSource> run = commandContext -> {
-			if (!APIHandler.isBoardFree()) {
-				commandContext.getSource().sendFeedback(Component.literal("Game already started, wait for your turn"));
-				return 0;
-			}
 			Minecraft instance = Minecraft.getInstance();
 			instance.execute(() -> {
 				try {
@@ -48,8 +44,22 @@ public class GomokuClient implements ClientModInitializer {
 			return 0;
         };
 
-		Command<FabricClientCommandSource> cWipe = context -> {
-			context.getSource().sendFeedback(Component.literal("WIP"));
+		Command<FabricClientCommandSource> join = context -> {
+			String code = StringArgumentType.getString(context, "code");
+			 var succeed = APIHandler.join_room(code);
+			 if (succeed != null){
+
+				context.getSource().sendFeedback(Component.literal("Join room"));
+				Minecraft instance = Minecraft.getInstance();
+				instance.execute(() -> {
+					try {
+						Minecraft.getInstance().setScreen(new GobanScreen(Component.literal("Goban Screen")));
+					} catch (Exception e) {
+						LOGGER.error("Failed to set GobanScreen", e);
+					}
+				});
+			 } else
+				 context.getSource().sendFeedback(Component.literal("Failled to join room"));
 			return 1;
 		};
 
@@ -58,11 +68,9 @@ public class GomokuClient implements ClientModInitializer {
 					.executes(run)
 					.then(ClientCommandManager.literal("giveUp")
 							.executes(giveUp))
-					.then(ClientCommandManager.literal("create")
-							.executes(cWipe))
 					.then(ClientCommandManager.literal("join")
 							.then(ClientCommandManager.argument("code", StringArgumentType.string())
-									.executes(cWipe))
+									.executes(join))
 					));
 		});
 

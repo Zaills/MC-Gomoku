@@ -10,7 +10,7 @@ import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 public class GobanScreen extends Screen {
-	final static Identifier BACKGROUND_TEXTURE = Identifier.fromNamespaceAndPath(Gomoku.MOD_ID, "textures/gui/goban_hud.png");
+	final static Identifier BACKGROUND_TEXTURE = Identifier.fromNamespaceAndPath(GomokuClient.MOD_ID, "textures/gui/goban_hud.png");
 	final static Identifier BLACK_STONE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/blackstone.png");
 	final static Identifier WHITE_STONE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/white_wool.png");
 	final static Identifier EMPTY_CELL_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/oak_planks.png");
@@ -38,12 +38,18 @@ public class GobanScreen extends Screen {
 	@Override
 	protected void init() {
 		lastPullTime = System.currentTimeMillis();
+		APIHandler.create_room(true, false);
 		boardState = APIHandler.getBoardState();
 	}
 
 	@Override
 	public void render(@NotNull GuiGraphics guiGraphics, int i, int j, float f) {
 		super.render(guiGraphics, i, j, f);
+
+		if (APIHandler.isBoardFree()) {
+			this.minecraft.gui.getChat().addMessage(Component.literal("Party ended"));
+			this.minecraft.setScreen(null);
+		}
 
 		this.xMouse = i;
 		this.yMouse = j;
@@ -58,9 +64,7 @@ public class GobanScreen extends Screen {
 	}
 
 	private void renderBoard(GuiGraphics guiGraphics, int startX, int startY) {
-		if (!this.PlayerTurn && boardState != null) {
-			waitForBoardUpdate();
-		}
+		//waitForBoardUpdate();
 		if (boardState == null) {
 			guiGraphics.drawString(this.font, Component.literal("Failed to load board state."), 50, 80, 0xFF0000, true);
 			return;
@@ -115,7 +119,7 @@ public class GobanScreen extends Screen {
 				int y = startY + row * cellSize + spacingY(row);
 				if (this.xMouse >= x && this.xMouse <= x + cellSize &&
 						this.yMouse >= y && this.yMouse <= y + cellSize) {
-					Gomoku.LOGGER.info("Clicked on cell: ({}, {})", row, col);
+					GomokuClient.LOGGER.info("Clicked on cell: ({}, {})", row, col);
 					if (APIHandler.sendMove(col, row, 1)) {
 						this.PlayerTurn = false;
 						x_suggest = -1;
@@ -135,7 +139,7 @@ public class GobanScreen extends Screen {
 			if (suggest[0] != -1 && suggest[1] != -1) {
 				x_suggest = suggest[0];
 				y_suggest = suggest[1];
-				Gomoku.LOGGER.info("AI Suggestion: ({}, {})", x_suggest, y_suggest);
+				GomokuClient.LOGGER.info("AI Suggestion: ({}, {})", x_suggest, y_suggest);
 			}
 		}
 		return super.keyReleased(keyEvent);
@@ -153,6 +157,9 @@ public class GobanScreen extends Screen {
 		if (board != null && board != boardState) {
 			boardState = board;
 			this.PlayerTurn = true;
+		} else {
+			GomokuClient.LOGGER.error("cannot get the board");
+			this.minecraft.setScreen(null);
 		}
 	}
 }

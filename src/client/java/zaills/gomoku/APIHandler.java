@@ -14,7 +14,7 @@ import java.net.URI;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 
-import static zaills.gomoku.Gomoku.LOGGER;
+import static zaills.gomoku.GomokuClient.LOGGER;
 
 public class APIHandler {
 	private static final String baseUrl = AutoConfig.getConfigHolder(GomokuConfig.class).getConfig().baseURL;
@@ -22,6 +22,7 @@ public class APIHandler {
 	private static int[][] boardState;
 	private static String token = "";
 	private static String token2 = "";
+	private static boolean isBoardFree = true;
 
 	private static HttpURLConnection GetConnection(String path) {
 		try	{
@@ -85,12 +86,13 @@ public class APIHandler {
 				JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
 				token = responseJson.get("player_one").getAsString();
 				token2 = responseJson.get("player_two").getAsString();
-				LOGGER.info("Room token: " + token);
+                LOGGER.info("Room token: {}", token);
+                LOGGER.info("token 2: {}", token2);
 			} else {
-				LOGGER.error("Failed to create room, response code: " + responseCode);
+                LOGGER.error("Failed to create room, response code: {}", responseCode);
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to create room via API: " + e.getMessage());
+            LOGGER.error("Error while trying to create room via API: {}", e.getMessage());
 		}
 	}
 
@@ -129,6 +131,7 @@ public class APIHandler {
 			if (responseCode == HttpURLConnection.HTTP_OK) {
 				String response = readResponse(conn);
 				JsonObject boardJson = JsonParser.parseString(response).getAsJsonObject();
+				isBoardFree = GSON.fromJson(boardJson.get("goban_free"), boolean.class);
 				boardState = GSON.fromJson(boardJson.get("board"), int[][].class);
 			}
 		} catch (IOException e) {
@@ -138,6 +141,24 @@ public class APIHandler {
 			return boardState;
 		}
 		return null;
+	}
+
+	public static boolean isBoardFree(){
+		try {
+			HttpURLConnection conn = GetConnection("/board");
+			if (conn == null) {
+				return false;
+			}
+			int responseCode = conn.getResponseCode();
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+				String response = readResponse(conn);
+				JsonObject boardJson = JsonParser.parseString(response).getAsJsonObject();
+				isBoardFree = GSON.fromJson(boardJson.get("goban_free"), boolean.class);
+			}
+		} catch (IOException e) {
+			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+		}
+		return isBoardFree;
 	}
 
 	public static boolean sendMove(int x, int y, int player) {
@@ -194,12 +215,14 @@ public class APIHandler {
 			JsonObject giveUpJson = new JsonObject();
 			giveUpJson.addProperty("token", token);
 
-			HttpURLConnection conn = PostConnection("/giveup", giveUpJson);
+			HttpURLConnection conn = PostConnection("/giveUp", giveUpJson);
 			if (conn == null) {
 				return false;
 			}
 			int responseCode = conn.getResponseCode();
 			if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+				String response = readResponse(conn);
+				System.out.println();
 				LOGGER.info("Give up sent successfully");
 				return true;
 			} else {

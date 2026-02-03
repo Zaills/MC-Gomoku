@@ -213,7 +213,7 @@ public class APIHandler {
 			JsonObject suggestJson = new JsonObject();
 			suggestJson.addProperty("token", token);
 
-			HttpURLConnection conn = PostConnection("/suggest", suggestJson);
+			HttpURLConnection conn = PostConnection("/ai-suggest", suggestJson);
 			if (conn == null) {
 				return new int[]{-1, -1};
 			}

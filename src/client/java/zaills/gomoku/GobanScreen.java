@@ -148,5 +148,8 @@ public class GobanScreen extends Screen {
 			this.minecraft.setScreen(null);
 		}
 		boardState = board;
-	}
+		try	{
+			Thread.sleep(100);
+		} catch (InterruptedException ignored) {}
+    }
 }

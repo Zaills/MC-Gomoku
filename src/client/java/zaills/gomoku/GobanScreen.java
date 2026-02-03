@@ -9,6 +9,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Arrays;
+
 public class GobanScreen extends Screen {
 	final static Identifier BACKGROUND_TEXTURE = Identifier.fromNamespaceAndPath(GomokuClient.MOD_ID, "textures/gui/goban_hud.png");
 	final static Identifier BLACK_STONE_TEXTURE = Identifier.fromNamespaceAndPath("minecraft", "textures/block/blackstone.png");
@@ -44,7 +46,7 @@ public class GobanScreen extends Screen {
 		super.render(guiGraphics, i, j, f);
 
 		if (APIHandler.isBoardFree()) {
-			this.minecraft.gui.getChat().addMessage(Component.literal("Party ended"));
+			this.minecraft.gui.getChat().addMessage(Component.literal("You lost :("));
 			this.minecraft.setScreen(null);
 		}
 
@@ -116,8 +118,14 @@ public class GobanScreen extends Screen {
 				int y = startY + row * cellSize + spacingY(row);
 				if (this.xMouse >= x && this.xMouse <= x + cellSize &&
 						this.yMouse >= y && this.yMouse <= y + cellSize) {
-					GomokuClient.LOGGER.info("Clicked on cell: ({}, {})", row, col);
-					if (APIHandler.sendMove(col, row, 1)) {
+					var result = APIHandler.sendMove(col, row, 1);
+					if (result != null) {
+						boardState = result.getA();
+						int winner = result.getB();
+						if (winner == 1){
+							this.minecraft.gui.getChat().addMessage(Component.literal("You Won :)"));
+							this.minecraft.setScreen(null);
+						}
 						x_suggest = -1;
 						y_suggest = -1;
 					}
@@ -146,8 +154,11 @@ public class GobanScreen extends Screen {
 		if (board == null) {
 			this.minecraft.gui.getChat().addMessage(Component.literal("Could not connect to the server"));
 			this.minecraft.setScreen(null);
+			return;
 		}
-		boardState = board;
+		if (!Arrays.deepEquals(boardState, board))  {
+			boardState = board;
+        }
 		try	{
 			Thread.sleep(100);
 		} catch (InterruptedException ignored) {}

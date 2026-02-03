@@ -24,6 +24,7 @@ public class APIHandler {
 	private static String token = "";
 	private static String token2 = "";
 	private static boolean isBoardFree = true;
+	private static boolean isJoined = false;
 
 	private static HttpURLConnection GetConnection(String path) {
 		try	{
@@ -89,6 +90,7 @@ public class APIHandler {
 				token2 = responseJson.get("player_two").getAsString();
                 LOGGER.info("Room token: {}", token);
                 LOGGER.info("token 2: {}", token2);
+				isJoined = false;
 				return new Tuple<>(token, token2);
 			} else {
                 LOGGER.error("Failed to create room, response code: {}", responseCode);
@@ -116,6 +118,7 @@ public class APIHandler {
 				System.out.println(response);
 				JsonObject responseJson = JsonParser.parseString(response).getAsJsonObject();
 				token = responseJson.get("token").getAsString();
+				isJoined = true;
 
 				LOGGER.info("Joined room successfully");
 				return getBoardState();
@@ -141,13 +144,11 @@ public class APIHandler {
 				JsonObject boardJson = JsonParser.parseString(response).getAsJsonObject();
 				isBoardFree = GSON.fromJson(boardJson.get("goban_free"), boolean.class);
 				boardState = GSON.fromJson(boardJson.get("board"), int[][].class);
+				return boardState;
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+			LOGGER.error("Error while trying to reach API: {}", e.getMessage());
 			return null;
-		}
-		if (boardState != null) {
-			return boardState;
 		}
 		return null;
 	}
@@ -165,12 +166,12 @@ public class APIHandler {
 				isBoardFree = GSON.fromJson(boardJson.get("goban_free"), boolean.class);
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+			LOGGER.error("Error while trying to reach API: {}", e.getMessage());
 		}
 		return isBoardFree;
 	}
 
-	public static boolean sendMove(int x, int y, int player) {
+	public static Tuple<int[][], Integer> sendMove(int x, int y, int player) {
 		try {
 			JsonObject moveJson = new JsonObject();
 			moveJson.addProperty("x", x);
@@ -180,20 +181,31 @@ public class APIHandler {
 
 			HttpURLConnection conn = PostConnection("/move", moveJson);
 			if (conn == null) {
-				return false;
+				return null;
 			}
 			int responseCode = conn.getResponseCode();
 			if (responseCode == java.net.HttpURLConnection.HTTP_OK) {
+				String response = readResponse(conn);
+				JsonObject boardJson = JsonParser.parseString(response).getAsJsonObject();
+				boardState = GSON.fromJson(boardJson.get("board"), int[][].class);
+				int winner = 0;
+				if (boardJson.has("winner")){
+					winner = GSON.fromJson(boardJson.get("winner"), int.class);
+					if (isJoined) {
+						winner = winner + 1;
+						if (winner == 3)
+							winner = 1;
+					}
+				}
 				LOGGER.info("Move sent successfully");
-				return true;
+				return new Tuple<>(boardState, winner);
 			} else {
-				LOGGER.error("Failed to send move, response code: " + responseCode);
-				return false;
+                LOGGER.error("Failed to send move, response code: {}", responseCode);
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to send move to API: " + e.getMessage());
-			return false;
+            LOGGER.error("Error while trying to send move to API: {}", e.getMessage());
 		}
+		return null;
 	}
 
 	public static int[] getAISuggest() {
@@ -214,7 +226,7 @@ public class APIHandler {
 				return new int[]{x, y};
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to reach API: " + e.getMessage());
+			LOGGER.error("Error while trying to reach API: {}", e.getMessage());
 		}
 		return new int[]{-1, -1};
 	}
@@ -233,11 +245,11 @@ public class APIHandler {
 				LOGGER.info("Give up sent successfully");
 				return true;
 			} else {
-				LOGGER.error("Failed to send give up, response code: " + responseCode);
+                LOGGER.error("Failed to send give up, response code: {}", responseCode);
 				return false;
 			}
 		} catch (IOException e) {
-			LOGGER.error("Error while trying to send give up to API: " + e.getMessage());
+            LOGGER.error("Error while trying to send give up to API: {}", e.getMessage());
 			return false;
 		}
 

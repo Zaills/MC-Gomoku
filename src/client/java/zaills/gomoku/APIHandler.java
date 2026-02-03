@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.shedaniel.autoconfig.AutoConfig;
+import net.minecraft.util.Tuple;
 import zaills.gomoku.config.GomokuConfig;
 
 import java.io.BufferedReader;
@@ -69,7 +70,7 @@ public class APIHandler {
 		return content.toString();
 	}
 
-	public static void create_room(boolean ai_mode, boolean local_mode) {
+	public static Tuple<String, String> create_room(boolean ai_mode, boolean local_mode) {
 		try {
 			JsonObject roomJson = new JsonObject();
 			roomJson.addProperty("ai_mode", ai_mode);
@@ -77,7 +78,7 @@ public class APIHandler {
 
 			HttpURLConnection conn = PostConnection("/create", roomJson);
 			if (conn == null) {
-				return;
+				return null;
 			}
 			int responseCode = conn.getResponseCode();
 			if (responseCode == HttpURLConnection.HTTP_OK) {
@@ -88,12 +89,14 @@ public class APIHandler {
 				token2 = responseJson.get("player_two").getAsString();
                 LOGGER.info("Room token: {}", token);
                 LOGGER.info("token 2: {}", token2);
+				return new Tuple<>(token, token2);
 			} else {
                 LOGGER.error("Failed to create room, response code: {}", responseCode);
 			}
 		} catch (IOException e) {
             LOGGER.error("Error while trying to create room via API: {}", e.getMessage());
 		}
+		return null;
 	}
 
 	public static int[][] join_room(String room_id) {

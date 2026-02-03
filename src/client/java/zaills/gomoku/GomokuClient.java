@@ -23,7 +23,7 @@ public class GomokuClient implements ClientModInitializer {
 	public void onInitializeClient() {
 		AutoConfig.register(GomokuConfig.class, GsonConfigSerializer::new);
 
-		Command<FabricClientCommandSource> run = commandContext -> {
+		Command<FabricClientCommandSource> run = context -> {
 			Minecraft instance = Minecraft.getInstance();
 			instance.execute(() -> {
 				try {
@@ -40,7 +40,7 @@ public class GomokuClient implements ClientModInitializer {
 			if (succeed)
 				context.getSource().sendFeedback(Component.literal("You gave Up on the Gomoku Game"));
 			else
-				context.getSource().sendFeedback(Component.literal("Failed tp gave Up on the Gomoku Game"));
+				context.getSource().sendFeedback(Component.literal("Failed to gave Up on the Gomoku Game"));
 			return 0;
         };
 
@@ -48,14 +48,13 @@ public class GomokuClient implements ClientModInitializer {
 			String code = StringArgumentType.getString(context, "code");
 			 var succeed = APIHandler.join_room(code);
 			 if (succeed != null){
-
 				context.getSource().sendFeedback(Component.literal("Join room"));
 				Minecraft instance = Minecraft.getInstance();
 				instance.execute(() -> {
 					try {
 						Minecraft.getInstance().setScreen(new GobanScreen(Component.literal("Goban Screen")));
 					} catch (Exception e) {
-						LOGGER.error("Failed to set GobanScreen", e);
+						context.getSource().sendFeedback(Component.literal("Failed to set GobanScreen"));
 					}
 				});
 			 } else
@@ -63,9 +62,44 @@ public class GomokuClient implements ClientModInitializer {
 			return 1;
 		};
 
+		Command<FabricClientCommandSource> create_local = context -> {
+			var succeed = APIHandler.create_room(false, true);
+			if (succeed != null){
+				context.getSource().sendFeedback(Component.literal("Created a local Game"));
+				Minecraft instance = Minecraft.getInstance();
+				instance.execute(() -> {
+					try {
+						Minecraft.getInstance().setScreen(new GobanScreen(Component.literal("Goban Screen")));
+					} catch (Exception e) {
+						context.getSource().sendFeedback(Component.literal("Failed to set GobanScreen"));
+					}
+				});
+			}
+			else
+				context.getSource().sendFeedback(Component.literal("Failed Created a local Game"));
+			return 0;
+		};
+
+		Command<FabricClientCommandSource> create_remote = context -> {
+			var succeed = APIHandler.create_room(false, false);
+			if (succeed != null){
+				context.getSource().sendFeedback(Component.literal("Created a remote Game"));
+				context.getSource().sendFeedback(Component.literal("Invite token: " + succeed.getB()));
+				context.getSource().sendFeedback(Component.literal("to join execute: /go"));
+			}
+			else
+				context.getSource().sendFeedback(Component.literal("Failed Created a remote Game"));
+			return 0;
+		};
+
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			dispatcher.register(ClientCommandManager.literal("go")
 					.executes(run)
+					.then(ClientCommandManager.literal("create")
+							.then(ClientCommandManager.literal("local")
+									.executes(create_local))
+							.then(ClientCommandManager.literal("remote")
+									.executes(create_remote)))
 					.then(ClientCommandManager.literal("giveUp")
 							.executes(giveUp))
 					.then(ClientCommandManager.literal("join")

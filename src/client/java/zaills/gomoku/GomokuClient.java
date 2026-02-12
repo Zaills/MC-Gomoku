@@ -92,6 +92,17 @@ public class GomokuClient implements ClientModInitializer {
 			return 0;
 		};
 
+		Command<FabricClientCommandSource> help = context -> {
+			context.getSource().sendFeedback(Component.literal("""
+                    `/go` create an vs AI
+                    `/go create local` to create an player vs player local
+                    `/go create remote` to create an player vs player remotly
+                    `/go join [code]` to join an player vs player
+                    `/go giveUp` to giveUp the game"""
+			));
+			return 0;
+		};
+
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			dispatcher.register(ClientCommandManager.literal("go")
 					.executes(run)
@@ -105,7 +116,10 @@ public class GomokuClient implements ClientModInitializer {
 					.then(ClientCommandManager.literal("join")
 							.then(ClientCommandManager.argument("code", StringArgumentType.string())
 									.executes(join))
-					));
+					)
+					.then(ClientCommandManager.literal("help")
+					.executes(help))
+					);
 		});
 
 		ClientLifecycleEvents.CLIENT_STOPPING.register(context -> {

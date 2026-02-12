@@ -94,11 +94,11 @@ public class GomokuClient implements ClientModInitializer {
 
 		Command<FabricClientCommandSource> help = context -> {
 			context.getSource().sendFeedback(Component.literal("""
-                    `/go` create an vs AI
-                    `/go create local` to create an player vs player local
-                    `/go create remote` to create an player vs player remotly
-                    `/go join [code]` to join an player vs player
-                    `/go giveUp` to giveUp the game"""
+                    /go create an vs AI
+                    /go create local to create an player vs player local
+                    /go create remote to create an player vs player remotly
+                    /go join [code] to join an player vs player
+                    /go giveUp to giveUp the game"""
 			));
 			return 0;
 		};
